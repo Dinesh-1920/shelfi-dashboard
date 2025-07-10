@@ -89,7 +89,7 @@ if st.session_state.running:
             ts = time.strftime("%H:%M:%S")
 
             if st.session_state.last_processed_weight == current_weight:
-                pass  # skip duplicate
+                pass
             else:
                 st.session_state.last_processed_weight = current_weight
                 st.session_state.new_data_received = True
@@ -170,4 +170,4 @@ else:
 if st.session_state.running and st.session_state.get("new_data_received", False):
     st.session_state["new_data_received"] = False
     time.sleep(1.5)
-    st.rerun()
+    st.experimental_rerun()

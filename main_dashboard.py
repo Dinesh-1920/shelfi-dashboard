@@ -56,19 +56,18 @@ qty_ph = st.empty()
 # Firebase fetch function
 def fetch_latest_firebase_weight():
     try:
-        url = "https://shelfi-dashboard-default-rtdb.asia-southeast1.firebasedatabase.app/weight.json"
+        url = "https://shelfi-dashboard-default-rtdb.asia-southeast1.firebasedatabase.app/live_data.json"
         res = requests.get(url)
         data = res.json()
-        if data and isinstance(data, dict):
-            latest_ts = sorted(data.keys())[-1]
-            latest_data = data[latest_ts]
+        if data and "weight" in data:
             return {
-                "ts": latest_ts,
-                "weight": float(latest_data.get("weight", 0))
+                "ts": time.strftime("%H:%M:%S"),  # current time as timestamp
+                "weight": float(data["weight"])
             }
     except Exception as e:
         st.error(f"Firebase fetch error: {e}")
     return None
+
 
 # Step 4: Live data handling
 if st.session_state.running:

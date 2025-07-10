@@ -1,11 +1,9 @@
 # 📁 File: main_dashboard.py
 import streamlit as st
 import pandas as pd
-import threading, queue, time
-from pathlib import Path
-
+import time
+import requests
 from handlers.product_config import load_product_controls
-from handlers.mqtt_handler import start_mqtt_listener
 from handlers.model_logic import partial_train_model, predict_weight, generate_combinations_excel
 from handlers.quantity_logic import detect_action, update_quantity_tracker
 
@@ -44,24 +42,6 @@ if not st.session_state.dashboard_ready:
     st.stop()
 
 # Step 3: Start/Stop and placeholders
-LIVE_QUEUE = st.session_state.get("LIVE_QUEUE") or queue.Queue()
-st.session_state["LIVE_QUEUE"] = LIVE_QUEUE
-
-if "mqtt_thread_started" not in st.session_state:
-    def launch_mqtt():
-        start_mqtt_listener(
-            LIVE_QUEUE,
-            "a1ct2m9u3qf028-ats.iot.ap-south-1.amazonaws.com",
-            "outTopic",
-            {
-                "cert": Path("E:/Walmart/crets/device_cert.pem.crt"),
-                "key": Path("E:/Walmart/crets/private_key.pem.key"),
-                "root": Path("E:/Walmart/crets/AmazonRootCA1.pem"),
-            },
-        )
-    threading.Thread(target=launch_mqtt, daemon=True).start()
-    st.session_state.mqtt_thread_started = True
-
 col1, col2 = st.columns(2)
 if col1.button("▶️ Start", disabled=st.session_state.running):
     st.session_state.running = True
@@ -73,42 +53,54 @@ metric_ph = st.empty()
 table_ph = st.empty()
 qty_ph = st.empty()
 
+# Firebase fetch function
+def fetch_latest_firebase_weight():
+    try:
+        url = "https://shelfi-dashboard-default-rtdb.asia-southeast1.firebasedatabase.app/weight.json"
+        res = requests.get(url)
+        data = res.json()
+        if data and isinstance(data, dict):
+            latest_ts = sorted(data.keys())[-1]
+            latest_data = data[latest_ts]
+            return {
+                "ts": latest_ts,
+                "weight": float(latest_data.get("weight", 0))
+            }
+    except Exception as e:
+        st.error(f"Firebase fetch error: {e}")
+    return None
+
 # Step 4: Live data handling
 if st.session_state.running:
     try:
-        updates = 0
-        while not LIVE_QUEUE.empty() and updates < 3:
-            pkt = LIVE_QUEUE.get_nowait()
-            updates += 1
+        pkt = fetch_latest_firebase_weight()
+        if pkt:
             current_weight = pkt["weight"]
             ts = pkt["ts"]
 
             if st.session_state.initial_weight is None:
                 st.session_state.initial_weight = current_weight
                 st.session_state.last_weight = current_weight
-                continue
+            else:
+                delta = current_weight - st.session_state.last_weight
+                st.session_state.last_weight = current_weight
 
-            delta = current_weight - st.session_state.last_weight
-            st.session_state.last_weight = current_weight
+                action = detect_action(delta)
+                pred = predict_weight(current_weight)
 
-            action = detect_action(delta)
-            pred = predict_weight(current_weight)
-
-            # Log data only, do not update quantity
-            st.session_state.data = pd.concat([
-                st.session_state.data,
-                pd.DataFrame([{
-                    "Time": ts,
-                    "Weight (kg)": current_weight,
-                    "Predicted": pred,
-                    "Actual": "",
-                    "Correct": "",
-                    "Action": action
-                }])
-            ], ignore_index=True)
-
+                st.session_state.data = pd.concat([
+                    st.session_state.data,
+                    pd.DataFrame([{
+                        "Time": ts,
+                        "Weight (kg)": current_weight,
+                        "Predicted": pred,
+                        "Actual": "",
+                        "Correct": "",
+                        "Action": action
+                    }])
+                ], ignore_index=True)
     except Exception as e:
-        st.error(f"Error in loop: {e}")
+        st.error(f"❌ Error in Firebase loop: {type(e).__name__}: {e}")
 
 # Step 5: Display updated metrics and tables
 df = st.session_state.data.copy()
@@ -155,40 +147,7 @@ else:
         )
         st.info("Model updated after labeling.")
 
-# Step 4: Live data handling
+# Step 7: Auto-refresh only when running
 if st.session_state.running:
-    try:
-        updates = 0
-        while not LIVE_QUEUE.empty() and updates < 3:
-            pkt = LIVE_QUEUE.get_nowait()
-            updates += 1
-            current_weight = pkt["weight"]
-            ts = pkt["ts"]
-
-            if st.session_state.initial_weight is None:
-                st.session_state.initial_weight = current_weight
-                st.session_state.last_weight = current_weight
-                continue
-
-            delta = current_weight - st.session_state.last_weight
-            st.session_state.last_weight = current_weight
-
-            action = detect_action(delta)
-            pred = predict_weight(current_weight)
-
-            st.session_state.data = pd.concat([
-                st.session_state.data,
-                pd.DataFrame([{
-                    "Time": ts,
-                    "Weight (kg)": current_weight,
-                    "Predicted": pred,
-                    "Actual": "",
-                    "Correct": "",
-                    "Action": action
-                }])
-            ], ignore_index=True)
-
-    except Exception as e:
-        st.error(f"❌ Error in live data loop: {type(e).__name__}: {e}")
-
-
+    time.sleep(1.5)
+    st.experimental_rerun()

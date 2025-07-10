@@ -24,7 +24,7 @@ for k, v in {
     "dashboard_ready": False,
     "qty_tracker": {},
     "total_weight": 0.0,
-    "last_processed_weight": None,
+    "last_processed_key": None,
 }.items():
     st.session_state.setdefault(k, v)
 
@@ -83,17 +83,19 @@ if st.session_state.running:
     st_autorefresh(interval=2000, key="auto-refresh")
 
 # Step 4: Firebase Live Data Fetch
-FIREBASE_URL = "https://shelfi-dashboard-default-rtdb.asia-southeast1.firebasedatabase.app/live_data.json"
+FIREBASE_HISTORY_URL = "https://shelfi-dashboard-default-rtdb.asia-southeast1.firebasedatabase.app/live_data_history.json"
 if st.session_state.running:
     try:
-        res = requests.get(FIREBASE_URL, params={"_ts": time.time()})
-        data = res.json()
-        if data and "weight" in data:
-            current_weight = float(data["weight"])
-            ts = time.strftime("%H:%M:%S")
-
-            if st.session_state.last_processed_weight != current_weight:
-                st.session_state.last_processed_weight = current_weight
+        res = requests.get(FIREBASE_HISTORY_URL, params={"_ts": time.time()})
+        all_data = res.json()
+        if all_data:
+            keys = sorted(all_data.keys())
+            latest_key = keys[-1]
+            if st.session_state.last_processed_key != latest_key:
+                st.session_state.last_processed_key = latest_key
+                data = all_data[latest_key]
+                current_weight = float(data["weight"])
+                ts = latest_key.replace("-", ":")
 
                 if st.session_state.initial_weight is None:
                     st.session_state.initial_weight = current_weight

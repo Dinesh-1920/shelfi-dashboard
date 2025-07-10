@@ -83,15 +83,21 @@ if st.session_state.running:
     st_autorefresh(interval=2000, key="auto-refresh")
 
 # Step 4: Firebase Live Data Fetch
-FIREBASE_HISTORY_URL = "https://shelfi-dashboard-default-rtdb.asia-southeast1.firebasedatabase.app/"
+FIREBASE_HISTORY_URL = "https://shelfi-dashboard-default-rtdb.asia-southeast1.firebasedatabase.app/live_data_history.json"
 if st.session_state.running:
     try:
         res = requests.get(FIREBASE_HISTORY_URL, params={"_ts": time.time()})
         all_data = res.json()
+
         if all_data:
             keys = sorted(all_data.keys())
-            latest_key = keys[-1]
-            if st.session_state.last_processed_key != latest_key:
+            latest_key = keys[-1] if keys else None
+            debug_ph = st.expander("🛠 Debug Firebase Keys")
+            debug_ph.write(f"All Keys: {keys}")
+            debug_ph.write(f"Last Processed: {st.session_state.last_processed_key}")
+            debug_ph.write(f"Latest Key Found: {latest_key}")
+
+            if latest_key and st.session_state.last_processed_key != latest_key:
                 st.session_state.last_processed_key = latest_key
                 data = all_data[latest_key]
                 current_weight = float(data["weight"])

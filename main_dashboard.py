@@ -83,7 +83,7 @@ if st.session_state.running:
     st_autorefresh(interval=2000, key="auto-refresh")
 
 # Step 4: Firebase Live Data Fetch
-FIREBASE_HISTORY_URL = "https://shelfi-dashboard-default-rtdb.asia-southeast1.firebasedatabase.app/live_data_history.json"
+FIREBASE_HISTORY_URL = "https://shelfi-dashboard-default-rtdb.asia-southeast1.firebasedatabase.app/"
 if st.session_state.running:
     try:
         res = requests.get(FIREBASE_HISTORY_URL, params={"_ts": time.time()})

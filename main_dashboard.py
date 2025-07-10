@@ -158,4 +158,8 @@ else:
 # Step 7: Auto-refresh only when running
 if st.session_state.running:
     time.sleep(1.5)
-    st.experimental_rerun()
+    try:
+        st.experimental_rerun()
+    except AttributeError:
+        st.warning("⚠️ Auto-refresh failed. Please manually refresh the app.")
+

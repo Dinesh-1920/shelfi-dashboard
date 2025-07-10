@@ -170,4 +170,4 @@ else:
 if st.session_state.running and st.session_state.get("new_data_received", False):
     st.session_state["new_data_received"] = False
     time.sleep(1.5)
-    st.experimental_rerun()
+    st.rerun()

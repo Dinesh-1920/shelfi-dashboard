@@ -24,7 +24,6 @@ for k, v in {
     "qty_tracker": {},
     "total_weight": 0.0,
     "last_processed_weight": None,
-    "new_data_received": False
 }.items():
     st.session_state.setdefault(k, v)
 
@@ -82,17 +81,14 @@ qty_ph = st.empty()
 FIREBASE_URL = "https://shelfi-dashboard-default-rtdb.asia-southeast1.firebasedatabase.app/live_data.json"
 if st.session_state.running:
     try:
-        res = requests.get(FIREBASE_URL)
+        res = requests.get(FIREBASE_URL, params={"_ts": time.time()})  # avoid caching
         data = res.json()
         if data and "weight" in data:
             current_weight = float(data["weight"])
             ts = time.strftime("%H:%M:%S")
 
-            if st.session_state.last_processed_weight == current_weight:
-                pass
-            else:
+            if st.session_state.last_processed_weight != current_weight:
                 st.session_state.last_processed_weight = current_weight
-                st.session_state.new_data_received = True
 
                 if st.session_state.initial_weight is None:
                     st.session_state.initial_weight = current_weight
@@ -109,14 +105,7 @@ if st.session_state.running:
 
                 st.session_state.data = pd.concat([
                     st.session_state.data,
-                    pd.DataFrame([{
-                        "Time": ts,
-                        "Weight (kg)": current_weight,
-                        "Predicted": pred,
-                        "Actual": "",
-                        "Correct": "",
-                        "Action": action
-                    }])
+                    pd.DataFrame([{ "Time": ts, "Weight (kg)": current_weight, "Predicted": pred, "Actual": "", "Correct": "", "Action": action }])
                 ], ignore_index=True)
 
     except Exception as e:
@@ -165,9 +154,3 @@ else:
             st.session_state.products
         )
         st.info("Model updated after labeling.")
-
-# Step 7: Auto-refresh only when new data came in
-if st.session_state.running and st.session_state.get("new_data_received", False):
-    st.session_state["new_data_received"] = False
-    time.sleep(1.5)
-    st.experimental_rerun()

@@ -73,6 +73,8 @@ def fetch_latest_firebase_weight():
 if st.session_state.running:
     try:
         pkt = fetch_latest_firebase_weight()
+        st.write("📦 Packet received from Firebase:", pkt)
+
         if pkt:
             current_weight = pkt["weight"]
             ts = pkt["ts"]

@@ -56,7 +56,7 @@ qty_ph = st.empty()
 # Firebase fetch function
 def fetch_latest_firebase_weight():
     try:
-        url = "https://shelfi-dashboard-default-rtdb.asia-southeast1.firebasedatabase.app/"
+        url = "https://shelfi-dashboard-default-rtdb.asia-southeast1.firebasedatabase.app/live_data.json"
         res = requests.get(url)
         data = res.json()
         if data and isinstance(data, dict) and "weight" in data:

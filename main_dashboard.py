@@ -59,22 +59,22 @@ def fetch_latest_firebase_weight():
         url = "https://shelfi-dashboard-default-rtdb.asia-southeast1.firebasedatabase.app/live_data.json"
         res = requests.get(url)
         data = res.json()
-        if data and "weight" in data:
+        if data and isinstance(data, dict) and "weight" in data:
+            st.write("🔥 Firebase Data:", data)  # Debug print
             return {
-                "ts": time.strftime("%H:%M:%S"),  # current time as timestamp
+                "ts": time.strftime("%H:%M:%S"),
                 "weight": float(data["weight"])
             }
+        else:
+            st.warning("⚠️ No weight in Firebase response:", data)
     except Exception as e:
-        st.error(f"Firebase fetch error: {e}")
+        st.error(f"🔥 Firebase fetch error: {e}")
     return None
-
 
 # Step 4: Live data handling
 if st.session_state.running:
     try:
         pkt = fetch_latest_firebase_weight()
-        st.write("📦 Packet received from Firebase:", pkt)
-
         if pkt:
             current_weight = pkt["weight"]
             ts = pkt["ts"]

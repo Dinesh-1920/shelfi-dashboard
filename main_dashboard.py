@@ -5,6 +5,7 @@ import time
 import requests
 from pathlib import Path
 from itertools import product
+from streamlit_autorefresh import st_autorefresh
 
 from handlers.product_config import load_product_controls
 from handlers.model_logic import partial_train_model, predict_weight_from_excel
@@ -77,11 +78,15 @@ metric_ph = st.empty()
 table_ph = st.empty()
 qty_ph = st.empty()
 
+# 🔁 Auto-refresh every 2 seconds when dashboard is running
+if st.session_state.running:
+    st_autorefresh(interval=2000, key="auto-refresh")
+
 # Step 4: Firebase Live Data Fetch
 FIREBASE_URL = "https://shelfi-dashboard-default-rtdb.asia-southeast1.firebasedatabase.app/live_data.json"
 if st.session_state.running:
     try:
-        res = requests.get(FIREBASE_URL, params={"_ts": time.time()})  # avoid caching
+        res = requests.get(FIREBASE_URL, params={"_ts": time.time()})
         data = res.json()
         if data and "weight" in data:
             current_weight = float(data["weight"])

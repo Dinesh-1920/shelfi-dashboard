@@ -155,11 +155,40 @@ else:
         )
         st.info("Model updated after labeling.")
 
-# Step 7: Auto-refresh only when running
+# Step 4: Live data handling
 if st.session_state.running:
-    time.sleep(1.5)
     try:
-        st.experimental_rerun()
-    except AttributeError:
-        st.warning("⚠️ Auto-refresh failed. Please manually refresh the app.")
+        updates = 0
+        while not LIVE_QUEUE.empty() and updates < 3:
+            pkt = LIVE_QUEUE.get_nowait()
+            updates += 1
+            current_weight = pkt["weight"]
+            ts = pkt["ts"]
+
+            if st.session_state.initial_weight is None:
+                st.session_state.initial_weight = current_weight
+                st.session_state.last_weight = current_weight
+                continue
+
+            delta = current_weight - st.session_state.last_weight
+            st.session_state.last_weight = current_weight
+
+            action = detect_action(delta)
+            pred = predict_weight(current_weight)
+
+            st.session_state.data = pd.concat([
+                st.session_state.data,
+                pd.DataFrame([{
+                    "Time": ts,
+                    "Weight (kg)": current_weight,
+                    "Predicted": pred,
+                    "Actual": "",
+                    "Correct": "",
+                    "Action": action
+                }])
+            ], ignore_index=True)
+
+    except Exception as e:
+        st.error(f"❌ Error in live data loop: {type(e).__name__}: {e}")
+
 
